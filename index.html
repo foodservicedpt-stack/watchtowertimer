@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#102a33" />
+    <meta name="description" content="Temporizador para la reunión de estudio de La Atalaya: ritmo, párrafos y notas." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Watchtower" />
+    <title>WatchtowerTimer</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true">W</span>
+          <div>
+            <p class="eyebrow">CONDUCCIÓN</p>
+            <h1>WatchtowerTimer</h1>
+          </div>
+        </div>
+        <button class="icon-button" id="toggle-settings" aria-expanded="false" aria-controls="settings" title="Ajustes">⚙</button>
+      </header>
+
+      <section class="article-strip" aria-label="Artículo cargado">
+        <div>
+          <p class="eyebrow">LA ATALAYA · ESTA SEMANA</p>
+          <h2 id="article-title">Cómo seguir siendo amigos de los hermanos</h2>
+          <p class="article-meta" id="article-meta">17–23 de agosto de 2026</p>
+        </div>
+        <span class="article-badge" id="article-badge">20 párrafos</span>
+      </section>
+      <p class="article-status" id="article-status" aria-live="polite">Buscando la Atalaya de esta semana…</p>
+
+      <section class="settings" id="settings" hidden>
+        <div class="setting-group duration-group">
+          <span class="setting-label">Duración disponible</span>
+          <div class="duration-controls">
+            <button class="preset is-active" data-total="60">60 min</button>
+            <button class="preset" data-total="30">30 min</button>
+            <label class="custom-duration">Otra <input id="total-minutes" type="number" min="20" max="70" value="60" inputmode="numeric" /> min</label>
+          </div>
+        </div>
+        <div class="setting-grid">
+          <label>Introducción <input id="intro-seconds" type="number" min="0" max="600" step="15" value="90" /> <span>seg</span></label>
+          <label>Repaso <input id="review-seconds" type="number" min="0" max="600" step="15" value="240" /> <span>seg</span></label>
+          <label>Conclusión <input id="closing-seconds" type="number" min="0" max="600" step="15" value="90" /> <span>seg</span></label>
+        </div>
+        <p class="settings-hint">Los párrafos restantes se recalculan al avanzar. En 30 min se mantiene cada “lea” y se acorta el tiempo de comentarios.</p>
+      </section>
+
+      <section class="timer-panel" aria-live="polite">
+        <div class="timer-copy">
+          <p class="eyebrow" id="phase-label">LISTO PARA EMPEZAR</p>
+          <div class="clock" id="clock">60:00</div>
+          <p class="clock-label">tiempo restante</p>
+        </div>
+        <div class="progress-ring" id="progress-ring" aria-hidden="true">
+          <span id="progress-value">0%</span>
+        </div>
+        <div class="timer-actions">
+          <button class="secondary-action" id="reset">Reiniciar</button>
+          <button class="primary-action" id="start-pause">Iniciar</button>
+        </div>
+      </section>
+
+      <section class="route-card" aria-label="Ritmo del estudio">
+        <div class="route-header">
+          <div>
+            <p class="eyebrow">RITMO</p>
+            <h2>Tu recorrido</h2>
+          </div>
+        </div>
+        <div class="position-grid">
+          <div class="position-block expected">
+            <p>Deberías ir por</p>
+            <strong><span id="expected-paragraph">Introducción</span></strong>
+          </div>
+        </div>
+        <div class="paragraph-card" id="paragraph-card">
+          <div class="paragraph-number"><span id="paragraph-number">—</span><small>actual</small></div>
+          <div class="paragraph-details">
+            <p class="paragraph-title" id="paragraph-title">Comienza con tus comentarios iniciales</p>
+            <div class="event-list" id="event-list"></div>
+            <div class="segment-meter" aria-hidden="true"><span id="segment-fill"></span></div>
+          </div>
+          <span class="paragraph-time" id="paragraph-time">1:30<br><small>restantes</small></span>
+        </div>
+        <div class="paragraph-actions">
+          <p>Avanza automáticamente al terminar el tiempo.</p>
+          <button id="next-paragraph" class="next-action">Pasar ahora →</button>
+        </div>
+        <p class="redistribution-note" id="redistribution-note">El tiempo se redistribuirá entre los párrafos restantes.</p>
+      </section>
+
+      <section class="route-map" aria-label="Mapa de párrafos">
+        <div class="route-map-heading"><p class="eyebrow">MAPA DEL ARTÍCULO</p><span>📖 lea · 🖼️ imagen</span></div>
+        <div class="paragraph-list" id="paragraph-list"></div>
+      </section>
+
+      <section class="notes-card">
+        <div class="notes-heading">
+          <div><p class="eyebrow">NOTAS RÁPIDAS</p><h2>Aquí para cuando lo necesites</h2></div>
+          <button class="clear-notes" id="clear-notes">Borrar</button>
+        </div>
+        <textarea id="notes" rows="3" placeholder="Nombres, ideas o recordatorios…"></textarea>
+        <p class="notes-help">Se guardan en este dispositivo hasta que las borres.</p>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
