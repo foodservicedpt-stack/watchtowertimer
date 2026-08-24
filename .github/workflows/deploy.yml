@@ -4,8 +4,9 @@ on:
   push:
     branches: [main]
   schedule:
-    # Cada lunes por la mañana para recoger el artículo de estudio de la semana.
-    - cron: "0 6 * * 1"
+    # Cada día a las 04:00 UTC (06:00 en España en verano, 05:00 en invierno).
+    # Corre a diario como red de seguridad: si un día falla, el siguiente se recupera solo.
+    - cron: "0 4 * * *"
   workflow_dispatch:
 
 permissions:
