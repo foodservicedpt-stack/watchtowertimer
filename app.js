@@ -21,36 +21,67 @@ function format(seconds) {
 }
 function settings() { return { intro: +els.intro.value, review: +els.review.value, closing: +els.closing.value }; }
 function isCircuitMode() { return state.total === 30 * 60; }
+
+// Agrupa los párrafos en "bloques de estudio": los párrafos que comparten la
+// misma pregunta se analizan juntos (p. ej. la pregunta "1, 2." engloba los
+// párrafos 1 y 2, así que forman un único bloque).
+function buildBlocks() {
+  const blocks = [];
+  let current = null;
+  paragraphs.forEach((p, index) => {
+    const number = p.number || index + 1;
+    const question = p.question || number;
+    if (!current || current.question !== question) {
+      current = { question, paragraphs: [] };
+      blocks.push(current);
+    }
+    current.paragraphs.push({ ...p, number });
+  });
+  return blocks;
+}
+function blockFirst(block) { return block.paragraphs[0].number; }
+function blockLast(block) { return block.paragraphs[block.paragraphs.length - 1].number; }
+function blockParts(block) { return Math.max(1, block.paragraphs[0]?.parts || 1); }
+function blockWeight(block) {
+  let base = 0;
+  for (const p of block.paragraphs) base += p.length + (p.image ? 42 : 0) + (p.read ? 35 : 0) + (p.box ? 35 : 0);
+  // Una pregunta con varias partes (a), b), c)...) necesita un poco más de tiempo.
+  base += (blockParts(block) - 1) * 40;
+  return base;
+}
 function weights(from = 0) {
-  const total = paragraphs.length;
-  const span = Math.max(1, total - 1);
-  return paragraphs.slice(from).map((p, index) => {
-    // Posición 0..1 a lo largo del artículo: los primeros párrafos reciben
-    // un poco menos de tiempo y los últimos un poco más (la discusión suele
+  const blocks = buildBlocks();
+  const span = Math.max(1, blocks.length - 1);
+  return blocks.slice(from).map((block, index) => {
+    // Posición 0..1 a lo largo del artículo: los primeros bloques reciben un
+    // poco menos de tiempo y los últimos un poco más (la discusión suele
     // desarrollarse y alargarse hacia el final).
     const position = Math.min(1, (from + index) / span);
-    const base = p.length + (p.image ? 42 : 0) + (p.read ? 35 : 0) + (p.box ? 35 : 0);
-    return base * (0.9 + 0.2 * position);
+    return blockWeight(block) * (0.9 + 0.2 * position);
   });
 }
-function segment(kind, label, start, duration, paragraph = null) {
-  return { kind, label, start, end: start + Math.max(0, duration), duration: Math.max(0, duration), paragraph };
+function segment(kind, label, start, duration, block = null) {
+  return { kind, label, start, end: start + Math.max(0, duration), duration: Math.max(0, duration), block };
 }
-function addRemainingSchedule(start, paragraphFrom = 0) {
+function addRemainingSchedule(start, blockFrom = 0) {
   const values = settings();
   let available = Math.max(0, state.total - start);
   const closing = Math.min(values.closing, available);
   available -= closing;
   const review = Math.min(values.review, available);
   available -= review;
-  const paragraphWeights = weights(paragraphFrom);
-  const totalWeight = paragraphWeights.reduce((sum, weight) => sum + weight, 0);
+  const blocks = buildBlocks();
+  const blockWeights = weights(blockFrom);
+  const totalWeight = blockWeights.reduce((sum, weight) => sum + weight, 0);
   const schedule = [];
   let cursor = start;
-  paragraphWeights.forEach((weight, index) => {
-    const number = paragraphFrom + index + 1;
+  blockWeights.forEach((weight, index) => {
+    const block = blocks[blockFrom + index];
+    const first = blockFirst(block);
+    const last = blockLast(block);
+    const label = first === last ? `Pregunta ${block.question}` : `Pregunta ${block.question} · párrs. ${first}–${last}`;
     const duration = totalWeight ? available * weight / totalWeight : 0;
-    schedule.push(segment("paragraph", `Párrafo ${number}`, cursor, duration, number));
+    schedule.push(segment("paragraph", label, cursor, duration, blockFrom + index));
     cursor += duration;
   });
   schedule.push(segment("review", "Repaso", cursor, review));
@@ -70,26 +101,35 @@ function progress(segment) {
   return Math.min(1, Math.max(0, (state.elapsed - segment.start) / segment.duration));
 }
 function updateCard(current) {
-  els.cardNumber.textContent = current.paragraph || "—";
+  const block = current.block != null ? buildBlocks()[current.block] : null;
+  els.cardNumber.textContent = block ? block.question : "—";
   els.cardTitle.textContent = current.kind === "intro" ? "Comienza con tus comentarios iniciales"
     : current.kind === "review" ? "Haz las tres preguntas de repaso"
     : current.kind === "closing" ? "Cierra el estudio con tu conclusión"
-    : `Tiempo asignado al párrafo ${current.paragraph}`;
+    : block.paragraphs.length > 1 ? `Pregunta ${block.question} · párrafos ${blockFirst(block)}–${blockLast(block)}`
+    : `Pregunta ${block.question}`;
   els.eventList.innerHTML = "";
-  if (current.paragraph) {
-    const item = paragraphs[current.paragraph - 1];
-    if (item.read) els.eventList.insertAdjacentHTML("beforeend", '<span class="event-tag">📖 lea</span>');
-    if (item.image) els.eventList.insertAdjacentHTML("beforeend", '<span class="event-tag">🖼️ imagen</span>');
-    if (!item.read && !item.image) els.eventList.insertAdjacentHTML("beforeend", '<span class="event-tag">Comentario</span>');
+  if (block) {
+    let flags = 0;
+    if (block.paragraphs.some((p) => p.read)) { els.eventList.insertAdjacentHTML("beforeend", '<span class="event-tag">📖 lea</span>'); flags++; }
+    if (block.paragraphs.some((p) => p.image)) { els.eventList.insertAdjacentHTML("beforeend", '<span class="event-tag">🖼️ imagen</span>'); flags++; }
+    if (block.paragraphs.some((p) => p.box)) { els.eventList.insertAdjacentHTML("beforeend", '<span class="event-tag">📦 recuadro</span>'); flags++; }
+    const parts = blockParts(block);
+    if (parts > 1) els.eventList.insertAdjacentHTML("beforeend", `<span class="event-tag">${Array.from({ length: parts }, (_, i) => String.fromCharCode(97 + i)).join(" · ")}</span>`);
+    if (flags === 0 && parts <= 1) els.eventList.insertAdjacentHTML("beforeend", '<span class="event-tag">Comentario</span>');
   }
   els.paragraphTime.innerHTML = `${format(current.end - state.elapsed)}<br><small>restantes</small>`;
   els.fill.style.width = `${progress(current) * 100}%`;
 }
 function drawMap(current) {
-  els.list.innerHTML = paragraphs.map((p, index) => {
-    const icon = p.image ? "🖼️" : p.read ? "📖" : "";
-    const selected = current.paragraph === index + 1 ? "is-current" : "";
-    return `<span class="paragraph-chip ${selected} ${icon ? "has-event" : ""}" title="Párrafo ${index + 1}${p.read ? ": lea" : ""}${p.image ? ": imagen" : ""}">${index + 1}${icon ? `<i class="chip-icon">${icon}</i>` : ""}</span>`;
+  els.list.innerHTML = buildBlocks().map((block, blockIndex) => {
+    const first = blockFirst(block);
+    const last = blockLast(block);
+    const icon = block.paragraphs.some((p) => p.image) ? "🖼️" : block.paragraphs.some((p) => p.read) ? "📖" : block.paragraphs.some((p) => p.box) ? "📦" : "";
+    const selected = current.block === blockIndex ? "is-current" : "";
+    const label = first === last ? `${first}` : `${first}–${last}`;
+    const title = first === last ? `Pregunta ${block.question} · párr. ${first}` : `Pregunta ${block.question} · párrs. ${first}–${last}`;
+    return `<span class="paragraph-chip ${selected} ${icon ? "has-event" : ""}" title="${title}">${label}${icon ? `<i class="chip-icon">${icon}</i>` : ""}</span>`;
   }).join("");
 }
 function render() {
@@ -102,7 +142,7 @@ function render() {
   els.phase.textContent = state.running ? current.label.toUpperCase() : state.elapsed ? "EN PAUSA" : "LISTO PARA EMPEZAR";
   els.start.textContent = state.running ? "Pausar" : state.elapsed ? "Continuar" : "Iniciar";
   els.expected.textContent = current.label;
-  els.note.textContent = current.paragraph ? "El siguiente párrafo empieza automáticamente al terminar esta cuenta atrás." : "El estudio cambiará automáticamente al siguiente tramo.";
+  els.note.textContent = current.block != null ? "La siguiente pregunta empieza automáticamente al terminar esta cuenta atrás." : "El estudio cambiará automáticamente al siguiente tramo.";
   updateCard(current); drawMap(current);
 }
 function stopTimer() {
@@ -135,7 +175,7 @@ function passNow() {
   const current = activeSegment();
   if (!current || current.kind === "closing") return;
   const index = state.schedule.indexOf(current);
-  if (current.kind === "paragraph") state.schedule = [...state.schedule.slice(0, index), ...addRemainingSchedule(state.elapsed, current.paragraph)];
+  if (current.kind === "paragraph") state.schedule = [...state.schedule.slice(0, index), ...addRemainingSchedule(state.elapsed, current.block + 1)];
   else if (current.kind === "intro") state.schedule = [...addRemainingSchedule(state.elapsed)];
   else state.schedule = [...state.schedule.slice(0, index), segment("closing", "Conclusión", state.elapsed, state.total - state.elapsed)];
   render();
@@ -147,7 +187,8 @@ function isValidArticle(article) {
 function displayArticle(article, status) {
   els.articleTitle.textContent = article.title;
   els.articleMeta.textContent = article.week || "Atalaya de esta semana";
-  els.articleBadge.textContent = `${article.paragraphs.length} párrafos`;
+  const questionCount = buildBlocks().length;
+  els.articleBadge.textContent = questionCount < article.paragraphs.length ? `${questionCount} preguntas · ${article.paragraphs.length} párrs.` : `${article.paragraphs.length} párrafos`;
   els.articleStatus.textContent = status;
 }
 async function loadWeeklyArticle() {

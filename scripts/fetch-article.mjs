@@ -50,9 +50,17 @@ function articleFromHtml(html, sourceUrl, week) {
   const body = bodyStart >= 0 ? html.slice(bodyStart, html.indexOf("</main>", bodyStart)) : html;
   // Preguntas de estudio (<p class="qu">), indexadas por data-pid.
   const questions = new Map();
+  const questionNumber = new Map(); // pid -> número de la pregunta ("1, 2." -> 1)
+  const questionParts = new Map();  // pid -> nº de apartados a), b), c)...
   for (const match of body.matchAll(/<p\b[^>]*class="[^"]*\bqu\b[^"]*"[^>]*>([\s\S]*?)<\/p>/g)) {
     const pid = match[0].match(/data-pid="(\d+)"/);
-    if (pid) questions.set(pid[1], plain(match[1]));
+    if (!pid) continue;
+    const qtext = plain(match[1]);
+    questions.set(pid[1], qtext);
+    const leading = qtext.match(/^\s*(\d+)/);
+    if (leading) questionNumber.set(pid[1], +leading[1]);
+    const letters = new Set([...qtext.matchAll(/\b([a-z])\s*\)/gi)].map((m) => m[1].toLowerCase()));
+    questionParts.set(pid[1], Math.max(1, letters.size));
   }
   // Párrafos reales: cada <p> lleva un <span class="parNum" data-pnum="N">.
   const paragraphs = [];
@@ -62,9 +70,13 @@ function articleFromHtml(html, sourceUrl, week) {
     const number = +pnum[1];
     const text = plain(block[1].replace(/<span class="parNum[^"]*"[^>]*>[\s\S]*?<\/span>/g, ""));
     const rel = block[0].match(/data-rel-pid="\[([\d,\s]+)\]"/);
-    const questionText = rel ? rel[1].split(",").map((id) => questions.get(id.trim()) || "").join(" ") : "";
+    const relIds = rel ? rel[1].split(",").map((id) => id.trim()).filter(Boolean) : [];
+    const questionText = relIds.map((id) => questions.get(id) || "").join(" ");
+    const firstPid = relIds[0];
     paragraphs.push({
       number,
+      question: firstPid ? (questionNumber.get(firstPid) || number) : number,
+      parts: firstPid ? (questionParts.get(firstPid) || 1) : 1,
       length: Math.max(40, text.replace(/\s+/g, " ").length),
       read: /\blea\b/i.test(text),
       image: /\bim[aá]gen/i.test(text) || /\bim[aá]gen/i.test(questionText),
