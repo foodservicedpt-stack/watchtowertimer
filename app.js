@@ -22,7 +22,16 @@ function format(seconds) {
 function settings() { return { intro: +els.intro.value, review: +els.review.value, closing: +els.closing.value }; }
 function isCircuitMode() { return state.total === 30 * 60; }
 function weights(from = 0) {
-  return paragraphs.slice(from).map((p) => p.length + (p.image ? 42 : 0) + (p.read ? 35 : 0));
+  const total = paragraphs.length;
+  const span = Math.max(1, total - 1);
+  return paragraphs.slice(from).map((p, index) => {
+    // Posición 0..1 a lo largo del artículo: los primeros párrafos reciben
+    // un poco menos de tiempo y los últimos un poco más (la discusión suele
+    // desarrollarse y alargarse hacia el final).
+    const position = Math.min(1, (from + index) / span);
+    const base = p.length + (p.image ? 42 : 0) + (p.read ? 35 : 0) + (p.box ? 35 : 0);
+    return base * (0.9 + 0.2 * position);
+  });
 }
 function segment(kind, label, start, duration, paragraph = null) {
   return { kind, label, start, end: start + Math.max(0, duration), duration: Math.max(0, duration), paragraph };

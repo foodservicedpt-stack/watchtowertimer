@@ -67,6 +67,7 @@ function articleFromHtml(html, sourceUrl, week) {
       length: Math.max(40, text.replace(/\s+/g, " ").length),
       read: /\blea\b/i.test(text),
       image: /\bim[aá]gen/i.test(text) || /\bim[aá]gen/i.test(questionText),
+      box: /\brecuadro\b/i.test(text) || /\brecuadro\b/i.test(questionText),
     });
   }
   paragraphs.sort((a, b) => a.number - b.number);
