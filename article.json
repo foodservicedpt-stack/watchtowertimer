@@ -1,127 +1,97 @@
 {
-  "title": "Cómo seguir siendo amigos de los hermanos",
-  "week": "17-23 DE AGOSTO DE 2026",
-  "sourceUrl": "https://www.jw.org/es/biblioteca/revistas/atalaya-estudio-junio-2026/C%C3%B3mo-seguir-siendo-amigos-de-los-hermanos/",
+  "title": "Aprovechemos al máximo los grupos para el servicio del campo",
+  "week": "24-30 DE AGOSTO DE 2026",
+  "sourceUrl": "https://www.jw.org/es/biblioteca/revistas/atalaya-estudio-junio-2026/Aprovechemos-al-m%C3%A1ximo-los-grupos-para-el-servicio-del-campo/",
   "paragraphs": [
     {
       "number": 1,
-      "length": 469,
+      "length": 529,
       "read": false,
       "image": false
     },
     {
       "number": 2,
-      "length": 447,
+      "length": 779,
       "read": false,
       "image": false
     },
     {
       "number": 3,
-      "length": 873,
+      "length": 345,
       "read": false,
       "image": false
     },
     {
       "number": 4,
-      "length": 718,
+      "length": 1383,
       "read": false,
       "image": false
     },
     {
       "number": 5,
-      "length": 692,
-      "read": true,
+      "length": 949,
+      "read": false,
       "image": false
     },
     {
       "number": 6,
-      "length": 730,
+      "length": 664,
       "read": false,
       "image": false
     },
     {
       "number": 7,
-      "length": 912,
-      "read": false,
-      "image": false
-    },
-    {
-      "number": 8,
-      "length": 942,
+      "length": 1094,
       "read": true,
       "image": true
     },
     {
+      "number": 8,
+      "length": 1127,
+      "read": true,
+      "image": false
+    },
+    {
       "number": 9,
-      "length": 922,
+      "length": 876,
       "read": true,
       "image": false
     },
     {
       "number": 10,
-      "length": 668,
-      "read": false,
-      "image": false
+      "length": 921,
+      "read": true,
+      "image": true
     },
     {
       "number": 11,
-      "length": 608,
+      "length": 509,
       "read": false,
       "image": false
     },
     {
       "number": 12,
-      "length": 616,
+      "length": 525,
       "read": false,
       "image": false
     },
     {
       "number": 13,
-      "length": 919,
-      "read": true,
-      "image": false
+      "length": 708,
+      "read": false,
+      "image": true
     },
     {
       "number": 14,
-      "length": 538,
+      "length": 834,
       "read": false,
       "image": false
     },
     {
       "number": 15,
-      "length": 747,
+      "length": 544,
       "read": false,
       "image": false
-    },
-    {
-      "number": 16,
-      "length": 486,
-      "read": false,
-      "image": false
-    },
-    {
-      "number": 17,
-      "length": 726,
-      "read": false,
-      "image": false
-    },
-    {
-      "number": 18,
-      "length": 566,
-      "read": true,
-      "image": false
-    },
-    {
-      "number": 19,
-      "length": 709,
-      "read": false,
-      "image": true
-    },
-    {
-      "number": 20,
-      "length": 3595,
-      "read": false,
-      "image": true
     }
   ]
 }

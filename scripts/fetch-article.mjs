@@ -46,14 +46,33 @@ function articleLinkForWeek(issueHtml, today) {
 }
 function articleFromHtml(html, sourceUrl, week) {
   const title = plain(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || "");
-  const content = html.replace(/<img\b[^>]*>/gi, " [IMAGE] ").replace(/<\/p>/gi, "</p>\n");
-  const text = plain(content).replace(/(\d{1,2})\.\s*¿/g, "\n$1. ¿");
-  const matches = [...text.matchAll(/(?:^|\n)(\d{1,2})\.\s*¿[\s\S]*?(?=\n\d{1,2}\.\s*¿|\n¿CÓMO PODEMOS|$)/g)];
-  const paragraphs = matches.map((match, index) => {
-    const body = match[0];
-    return { number: +match[1], length: Math.max(40, body.replace(/\s+/g, " ").length), read: /\(\s*lea\b/i.test(body), image: /\[IMAGE\]|\bim[aá]genes?\b/i.test(body) };
-  }).filter((item, index) => item.number === index + 1);
-  if (!title || paragraphs.length < 5) throw new Error("No se pudo interpretar el artículo semanal");
+  const bodyStart = html.indexOf('<div class="bodyTxt">');
+  const body = bodyStart >= 0 ? html.slice(bodyStart, html.indexOf("</main>", bodyStart)) : html;
+  // Preguntas de estudio (<p class="qu">), indexadas por data-pid.
+  const questions = new Map();
+  for (const match of body.matchAll(/<p\b[^>]*class="[^"]*\bqu\b[^"]*"[^>]*>([\s\S]*?)<\/p>/g)) {
+    const pid = match[0].match(/data-pid="(\d+)"/);
+    if (pid) questions.set(pid[1], plain(match[1]));
+  }
+  // Párrafos reales: cada <p> lleva un <span class="parNum" data-pnum="N">.
+  const paragraphs = [];
+  for (const block of body.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/g)) {
+    const pnum = block[1].match(/data-pnum="(\d+)"/);
+    if (!pnum) continue;
+    const number = +pnum[1];
+    const text = plain(block[1].replace(/<span class="parNum[^"]*"[^>]*>[\s\S]*?<\/span>/g, ""));
+    const rel = block[0].match(/data-rel-pid="\[([\d,\s]+)\]"/);
+    const questionText = rel ? rel[1].split(",").map((id) => questions.get(id.trim()) || "").join(" ") : "";
+    paragraphs.push({
+      number,
+      length: Math.max(40, text.replace(/\s+/g, " ").length),
+      read: /\blea\b/i.test(text),
+      image: /\bim[aá]gen/i.test(text) || /\bim[aá]gen/i.test(questionText),
+    });
+  }
+  paragraphs.sort((a, b) => a.number - b.number);
+  const contiguous = paragraphs.every((paragraph, index) => paragraph.number === index + 1);
+  if (!title || paragraphs.length < 5 || !contiguous) throw new Error("No se pudo interpretar el artículo semanal");
   return { title, week, sourceUrl, paragraphs };
 }
 
