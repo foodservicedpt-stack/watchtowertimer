@@ -45,6 +45,7 @@ const articleOf = (count) => Array.from({ length: count }, (_, index) => ({
 const seconds = (value) => Math.round(value * 100) / 100;
 const paragraphsOf = (schedule) => schedule.filter((item) => item.kind === "paragraph");
 const durations = (segments) => segments.reduce((total, item) => total + item.duration, 0);
+const total = (values) => values.reduce((sum, value) => sum + value, 0);
 const byKind = (schedule, kind) => schedule.find((item) => item.kind === kind);
 
 // El plan siempre debe terminar al agotar el tiempo; tras un salto, la parte nueva
@@ -72,7 +73,7 @@ test("pasar ahora a mitad del estudio reparte el tiempo sobrante entre las pregu
   const objetivo = timer.state.schedule.find((item) => item.block === bloque);
   timer.state.elapsed = (objetivo.start + objetivo.end) / 2;
   const sobrante = objetivo.end - timer.state.elapsed;
-  const antes = durations(paragraphsOf(timer.state.schedule).filter((item) => item.block > bloque));
+  const antes = paragraphsOf(timer.state.schedule).filter((item) => item.block > bloque).map((item) => item.duration);
 
   timer.passNow();
 
@@ -80,7 +81,10 @@ test("pasar ahora a mitad del estudio reparte el tiempo sobrante entre las pregu
   assert.equal(despues.length, 5, "las preguntas que quedan deben seguir ahí");
   assertPlan(timer.state.schedule, 3600, timer.state.elapsed);
   assert.ok(despues.every((item) => item.duration > 0), "cada pregunta restante debe recibir algo del tiempo sobrante");
-  assert.equal(seconds(durations(despues) - antes), seconds(sobrante), "el tiempo sobrante debe repartirse entero, sin perderse");
+  assert.equal(seconds(durations(despues) - total(antes)), seconds(sobrante), "el tiempo sobrante debe repartirse entero, sin perderse");
+  const ganado = despues.map((item, index) => item.duration - antes[index]);
+  assert.ok(ganado[0] > 0, "las preguntas restantes deben ganar tiempo");
+  assert.ok(ganado.every((value) => Math.abs(value - ganado[0]) < 0.01), "todas las preguntas restantes deben ganar los MISMOS segundos: " + ganado.map((v) => Math.round(v * 10) / 10).join(", "));
 });
 
 test("el tramo que se deja atrás queda cerrado con el tiempo que se le dedicó", () => {
@@ -110,6 +114,7 @@ test("pasar ahora en la última pregunta reparte su tiempo entre repaso y conclu
   assert.equal(seconds(review.duration + closing.duration), seconds(3600 - timer.state.elapsed), "todo el tiempo restante debe quedar asignado");
   assert.ok(review.duration >= 240 && closing.duration >= 90, "repaso y conclusión no deben quedarse por debajo de lo configurado");
   assert.equal(seconds(review.duration + closing.duration - 330), seconds(sobrante), "el tiempo sobrante debe acabar en el tramo final");
+  assert.equal(seconds(review.duration - 240), seconds(closing.duration - 90), "repaso y conclusión deben ganar los mismos segundos");
 });
 
 test("pasar ahora durante la introducción reparte la introducción entre las preguntas", () => {

@@ -63,15 +63,14 @@ function weights(from = 0) {
 function segment(kind, label, start, duration, block = null) {
   return { kind, label, start, end: start + Math.max(0, duration), duration: Math.max(0, duration), block };
 }
-// Reparte el tiempo que queda desde "start" entre las preguntas que faltan, el repaso
-// y la conclusión. Si ya no queda ninguna pregunta —se ha pasado en la última—, repaso
-// y conclusión se reparten todo: antes ese rato se perdía y el estudio terminaba antes
-// que el reloj, con la cuenta atrás parada en 0:00.
-function addRemainingSchedule(start, blockFrom = 0) {
+// Plan inicial: desde "start", las preguntas se reparten el tiempo según su peso y al
+// final van el repaso y la conclusión. Al pasar de pregunta el reparto es a partes
+// iguales (ver "redistribute").
+function addRemainingSchedule(start) {
   const values = settings();
   let available = Math.max(0, state.total - start);
   const blocks = buildBlocks();
-  const blockWeights = weights(blockFrom);
+  const blockWeights = weights(0);
   const totalWeight = blockWeights.reduce((sum, weight) => sum + weight, 0);
   let review;
   let closing;
@@ -81,21 +80,21 @@ function addRemainingSchedule(start, blockFrom = 0) {
     review = Math.min(values.review, available);
     available -= review;
   } else {
+    // Sin preguntas (artículo vacío): repaso y conclusión se reparten todo el tiempo.
     const tail = values.review + values.closing;
     review = tail ? available * values.review / tail : 0;
     closing = available - review;
     available = 0;
   }
-  const schedule = [];
   let cursor = start;
-  blockWeights.forEach((weight, index) => {
-    const block = blocks[blockFrom + index];
+  const schedule = blockWeights.map((weight, index) => {
+    const block = blocks[index];
     const first = blockFirst(block);
     const last = blockLast(block);
     const label = first === last ? `Pregunta ${block.question}` : `Pregunta ${block.question} · párrs. ${first}–${last}`;
-    const duration = available * weight / totalWeight;
-    schedule.push(segment("paragraph", label, cursor, duration, blockFrom + index));
-    cursor += duration;
+    const item = segment("paragraph", label, cursor, available * weight / totalWeight, index);
+    cursor = item.end;
+    return item;
   });
   schedule.push(segment("review", "Repaso", cursor, review));
   cursor += review;
@@ -189,29 +188,40 @@ function setTotal(minutes) {
   document.querySelectorAll(".preset").forEach((button) => button.classList.toggle("is-active", +button.dataset.total === minutes));
   reset();
 }
+// Reparte a partes iguales el tiempo que sobraba entre los tramos que quedan: cada uno
+// gana los mismos segundos sobre lo que ya tenía, así que las preguntas conservan su
+// peso relativo. Si ya no queda ninguna pregunta, el reparto es entre repaso y
+// conclusión (antes ese rato se perdía y el plan terminaba antes que el reloj).
+function redistribute(fromIndex, sobrante) {
+  const tail = state.schedule.slice(fromIndex);
+  const questions = tail.filter((item) => item.kind === "paragraph");
+  const heirs = questions.length ? questions : tail.filter((item) => item.kind !== "paragraph");
+  const share = heirs.length ? sobrante / heirs.length : 0;
+  let cursor = state.elapsed;
+  return tail.map((item) => {
+    const duration = item.duration + (heirs.includes(item) ? share : 0);
+    const laid = { ...item, start: cursor, duration, end: cursor + duration };
+    cursor = laid.end;
+    return laid;
+  });
+}
 // "Pasar ahora": el tiempo que todavía tenía asignado este tramo se reparte entre los
-// que quedan. Si ya no queda ninguna pregunta, va a repaso y conclusión.
-// El tramo que se deja atrás se cierra en el instante del salto: así el plan sigue
-// siendo una línea continua, no se pierde el rato ya dedicado y el mapa lo refleja.
+// que quedan. El tramo que se deja atrás se cierra en el instante del salto: así el plan
+// sigue siendo una línea continua, no se pierde el rato ya dedicado y el mapa lo refleja.
 function passNow() {
   const current = activeSegment();
   if (!current || current.kind === "closing") return;
-  const kept = state.schedule.slice(0, state.schedule.indexOf(current));
+  const index = state.schedule.indexOf(current);
+  const kept = state.schedule.slice(0, index);
   const spent = { ...current, end: state.elapsed, duration: Math.max(0, state.elapsed - current.start) };
   const sobrante = Math.max(0, current.end - state.elapsed);
-  if (current.kind === "intro") {
-    state.schedule = [...kept, spent, ...addRemainingSchedule(state.elapsed, 0)];
-    state.notice = `Introducción acortada: ${format(sobrante)} repartidos entre las ${buildBlocks().length} preguntas.`;
-  } else if (current.kind === "paragraph") {
-    const restantes = Math.max(0, buildBlocks().length - current.block - 1);
-    state.schedule = [...kept, spent, ...addRemainingSchedule(state.elapsed, current.block + 1)];
-    state.notice = restantes
-      ? `${format(sobrante)} repartidos entre las ${restantes} preguntas restantes.`
-      : `Última pregunta: ${format(sobrante)} repartidos entre el repaso y la conclusión.`;
-  } else {
-    state.schedule = [...kept, spent, segment("closing", "Conclusión", state.elapsed, state.total - state.elapsed)];
-    state.notice = `Repaso acortado: ${format(sobrante)} para la conclusión.`;
-  }
+  const tail = redistribute(index + 1, sobrante);
+  const restantes = tail.filter((item) => item.kind === "paragraph").length;
+  state.schedule = [...kept, spent, ...tail];
+  if (current.kind === "intro") state.notice = `Introducción acortada: ${format(sobrante)} a partes iguales entre las ${restantes} preguntas.`;
+  else if (restantes) state.notice = `${format(sobrante)} a partes iguales entre las ${restantes} preguntas restantes.`;
+  else if (current.kind === "paragraph") state.notice = `Última pregunta: ${format(sobrante)} a partes iguales entre el repaso y la conclusión.`;
+  else state.notice = `Repaso acortado: ${format(sobrante)} para la conclusión.`;
   render();
 }
 function isValidArticle(article) {
