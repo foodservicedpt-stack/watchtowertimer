@@ -30,8 +30,13 @@ jobs:
         with:
           node-version: 22
 
+      - name: Test article parser
+        run: node --test tests/*.test.mjs
+
       # Refresca article.json con el artículo de la semana desde jw.org.
-      # Si jw.org no está disponible, conserva la copia existente (no rompe el despliegue).
+      # Si no encuentra el artículo de la semana, el paso falla a propósito: no se
+      # despliega y el sitio conserva el último artículo publicado, en vez de
+      # retroceder a la copia antigua que hay en el repositorio.
       - name: Refresh weekly article
         run: node scripts/fetch-article.mjs
 

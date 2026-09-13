@@ -1,13 +1,13 @@
 {
-  "title": "Aprovechemos al máximo los grupos para el servicio del campo",
-  "week": "24-30 DE AGOSTO DE 2026",
-  "sourceUrl": "https://www.jw.org/es/biblioteca/revistas/atalaya-estudio-junio-2026/Aprovechemos-al-m%C3%A1ximo-los-grupos-para-el-servicio-del-campo/",
+  "title": "Aprendamos de los gabaonitas",
+  "week": "7-13 DE SEPTIEMBRE DE 2026",
+  "sourceUrl": "https://www.jw.org/es/biblioteca/revistas/atalaya-estudio-julio-2026/Aprendamos-de-los-gabaonitas/",
   "paragraphs": [
     {
       "number": 1,
       "question": 1,
       "parts": 1,
-      "length": 529,
+      "length": 354,
       "read": false,
       "image": false,
       "box": false
@@ -16,7 +16,7 @@
       "number": 2,
       "question": 1,
       "parts": 1,
-      "length": 779,
+      "length": 324,
       "read": false,
       "image": false,
       "box": false
@@ -24,8 +24,8 @@
     {
       "number": 3,
       "question": 3,
-      "parts": 1,
-      "length": 345,
+      "parts": 2,
+      "length": 762,
       "read": false,
       "image": false,
       "box": false
@@ -34,16 +34,16 @@
       "number": 4,
       "question": 4,
       "parts": 2,
-      "length": 1383,
+      "length": 930,
       "read": false,
-      "image": false,
-      "box": true
+      "image": true,
+      "box": false
     },
     {
       "number": 5,
       "question": 5,
       "parts": 1,
-      "length": 949,
+      "length": 749,
       "read": false,
       "image": false,
       "box": false
@@ -52,7 +52,7 @@
       "number": 6,
       "question": 6,
       "parts": 1,
-      "length": 664,
+      "length": 519,
       "read": false,
       "image": false,
       "box": false
@@ -61,8 +61,8 @@
       "number": 7,
       "question": 7,
       "parts": 1,
-      "length": 1094,
-      "read": true,
+      "length": 983,
+      "read": false,
       "image": true,
       "box": false
     },
@@ -70,8 +70,8 @@
       "number": 8,
       "question": 8,
       "parts": 1,
-      "length": 1127,
-      "read": true,
+      "length": 388,
+      "read": false,
       "image": false,
       "box": false
     },
@@ -79,8 +79,8 @@
       "number": 9,
       "question": 9,
       "parts": 1,
-      "length": 876,
-      "read": true,
+      "length": 385,
+      "read": false,
       "image": false,
       "box": false
     },
@@ -88,25 +88,25 @@
       "number": 10,
       "question": 10,
       "parts": 1,
-      "length": 921,
-      "read": true,
-      "image": true,
+      "length": 790,
+      "read": false,
+      "image": false,
       "box": false
     },
     {
       "number": 11,
       "question": 11,
       "parts": 1,
-      "length": 509,
+      "length": 515,
       "read": false,
       "image": false,
       "box": false
     },
     {
       "number": 12,
-      "question": 11,
+      "question": 12,
       "parts": 1,
-      "length": 525,
+      "length": 932,
       "read": false,
       "image": false,
       "box": false
@@ -115,16 +115,16 @@
       "number": 13,
       "question": 13,
       "parts": 1,
-      "length": 708,
+      "length": 667,
       "read": false,
-      "image": true,
+      "image": false,
       "box": false
     },
     {
       "number": 14,
       "question": 14,
       "parts": 1,
-      "length": 834,
+      "length": 875,
       "read": false,
       "image": false,
       "box": false
@@ -133,7 +133,25 @@
       "number": 15,
       "question": 15,
       "parts": 1,
-      "length": 544,
+      "length": 652,
+      "read": false,
+      "image": false,
+      "box": false
+    },
+    {
+      "number": 16,
+      "question": 16,
+      "parts": 1,
+      "length": 980,
+      "read": false,
+      "image": false,
+      "box": false
+    },
+    {
+      "number": 17,
+      "question": 17,
+      "parts": 1,
+      "length": 774,
       "read": false,
       "image": false,
       "box": false

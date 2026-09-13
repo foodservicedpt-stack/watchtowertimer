@@ -14,8 +14,11 @@ La app se despliega automáticamente con GitHub Actions:
 
 El workflow:
 - Se ejecuta en cada *push* a `main`.
-- Se ejecuta cada **lunes** para descargar el artículo de estudio de la semana desde jw.org y publicarlo.
+- Se ejecuta **cada día** a las 04:00 UTC para descargar el artículo de estudio de la semana desde jw.org y publicarlo.
+- Ejecuta las pruebas del lector de artículos antes de publicar.
 - Se puede lanzar manualmente desde **Actions → Deploy to GitHub Pages → Run workflow**.
+
+Si el paso de actualización no encuentra el artículo de la semana, el despliegue se detiene y la web conserva el último artículo publicado: nunca retrocede a uno más antiguo.
 
 ## Cómo funciona el artículo semanal
 
@@ -25,6 +28,12 @@ Para refrescar `article.json` localmente:
 
 ```sh
 node scripts/fetch-article.mjs
+```
+
+El lector vive en `scripts/article-source.mjs` y lo comparten el workflow y el servidor local. Sus pruebas usan extractos reales de jw.org guardados en `tests/fixtures/`, así que detectan cambios de estructura sin salir a la red:
+
+```sh
+node --test tests/*.test.mjs   # equivalente a: npm test
 ```
 
 ## Ejecutar en local

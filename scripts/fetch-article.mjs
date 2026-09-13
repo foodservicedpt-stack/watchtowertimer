@@ -1,107 +1,44 @@
 // Actualiza article.json con el artículo de estudio de la semana desde jw.org.
 // Se ejecuta en CI (GitHub Actions) y también puede usarse localmente:
 //   node scripts/fetch-article.mjs
-// Si jw.org no responde o no se encuentra el artículo, NO modifica article.json
-// y termina con código 0 (para no romper el despliegue).
+// Si no se puede obtener el artículo de la semana, NO toca article.json y sale con
+// código distinto de cero. Es deliberado: así el despliegue no se hace, el sitio
+// conserva el último artículo publicado y el fallo se ve en Actions. Antes salía con
+// código 0, de modo que el workflow publicaba la copia antigua del repositorio y la
+// web retrocedía a un artículo de semanas atrás sin que nadie se enterara.
 import { writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { articleFromHtml, fetchText, issueUrls, magazineIndex, weeklyArticles } from "./article-source.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const jwBase = "https://www.jw.org";
-const magazineIndex = `${jwBase}/es/biblioteca/revistas/`;
-const monthNumber = { enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5, julio: 6, agosto: 7, septiembre: 8, setiembre: 8, octubre: 9, noviembre: 10, diciembre: 11 };
 
-function plain(value = "") {
-  return value.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<br\s*\/?>/gi, "\n").replace(/<\/(?:p|div|h[1-6]|li)>/gi, "\n")
-    .replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&")
-    .replace(/&quot;/gi, '"').replace(/&#(?:x0*([\da-f]+)|0*(\d+));/gi, (_, hex, dec) => String.fromCodePoint(parseInt(hex || dec, hex ? 16 : 10)))
-    .replace(/\s+/g, " ").trim();
-}
-function absolute(url) { return new URL(url, jwBase).href; }
-async function fetchText(url) {
-  const response = await fetch(url, { headers: { "user-agent": "WatchtowerTimer/1.0 (personal timing tool)" } });
-  if (!response.ok) throw new Error(`jw.org respondió ${response.status}`);
-  return response.text();
-}
-function issueUrls(indexHtml) {
-  return [...new Set([...indexHtml.matchAll(/href="([^"]*\/es\/biblioteca\/revistas\/atalaya-estudio-[^"]+?\/)"/gi)].map((match) => absolute(match[1])))].slice(0, 16);
-}
-function rangeFor(context) {
-  const text = plain(context).toLowerCase().replace(/[–—]/g, "-");
-  let found = text.match(/(\d{1,2})\s*-\s*(\d{1,2})\s+de\s+([a-záéíóú]+)\s+de\s+(\d{4})/i);
-  if (found) return [new Date(+found[4], monthNumber[found[3]], +found[1]), new Date(+found[4], monthNumber[found[3]], +found[2], 23, 59, 59)];
-  found = text.match(/(\d{1,2})\s+de\s+([a-záéíóú]+)\s*-\s*(\d{1,2})\s+de\s+([a-záéíóú]+)\s+de\s+(\d{4})/i);
-  if (found) return [new Date(+found[5], monthNumber[found[2]], +found[1]), new Date(+found[5], monthNumber[found[4]], +found[3], 23, 59, 59)];
-  return null;
-}
-function articleLinkForWeek(issueHtml, today) {
-  const cards = /<p class="contextTitle">([\s\S]*?)<\/p>[\s\S]*?<a href="([^"]+)">([\s\S]*?)<\/a>[\s\S]*?<p class="desc">([\s\S]*?)<\/p>/gi;
-  for (const match of issueHtml.matchAll(cards)) {
-    const range = rangeFor(match[1]);
-    if (range && today >= range[0] && today <= range[1] && /Artículo de estudio para la semana/i.test(plain(match[4]))) return { url: absolute(match[2]), week: plain(match[1]) };
+// Recorre las ediciones publicadas y devuelve la semana que contiene "today".
+// La edición de estudio se publica con meses de antelación, así que la semana
+// actual puede estar en cualquiera de los números del índice.
+async function findWeeklyCard(today) {
+  const issues = issueUrls(await fetchText(magazineIndex));
+  const pages = await Promise.all(issues.map(async (url) => ({ url, html: await fetchText(url) })));
+  const published = [];
+  for (const { html } of pages) {
+    for (const card of weeklyArticles(html)) {
+      published.push(card);
+      if (today >= card.start && today <= card.end) return card;
+    }
   }
-  return null;
-}
-function articleFromHtml(html, sourceUrl, week) {
-  const title = plain(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || "");
-  const bodyStart = html.indexOf('<div class="bodyTxt">');
-  const body = bodyStart >= 0 ? html.slice(bodyStart, html.indexOf("</main>", bodyStart)) : html;
-  // Preguntas de estudio (<p class="qu">), indexadas por data-pid.
-  const questions = new Map();
-  const questionNumber = new Map(); // pid -> número de la pregunta ("1, 2." -> 1)
-  const questionParts = new Map();  // pid -> nº de apartados a), b), c)...
-  for (const match of body.matchAll(/<p\b[^>]*class="[^"]*\bqu\b[^"]*"[^>]*>([\s\S]*?)<\/p>/g)) {
-    const pid = match[0].match(/data-pid="(\d+)"/);
-    if (!pid) continue;
-    const qtext = plain(match[1]);
-    questions.set(pid[1], qtext);
-    const leading = qtext.match(/^\s*(\d+)/);
-    if (leading) questionNumber.set(pid[1], +leading[1]);
-    const letters = new Set([...qtext.matchAll(/\b([a-z])\s*\)/gi)].map((m) => m[1].toLowerCase()));
-    questionParts.set(pid[1], Math.max(1, letters.size));
-  }
-  // Párrafos reales: cada <p> lleva un <span class="parNum" data-pnum="N">.
-  const paragraphs = [];
-  for (const block of body.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/g)) {
-    const pnum = block[1].match(/data-pnum="(\d+)"/);
-    if (!pnum) continue;
-    const number = +pnum[1];
-    const text = plain(block[1].replace(/<span class="parNum[^"]*"[^>]*>[\s\S]*?<\/span>/g, ""));
-    const rel = block[0].match(/data-rel-pid="\[([\d,\s]+)\]"/);
-    const relIds = rel ? rel[1].split(",").map((id) => id.trim()).filter(Boolean) : [];
-    const questionText = relIds.map((id) => questions.get(id) || "").join(" ");
-    const firstPid = relIds[0];
-    paragraphs.push({
-      number,
-      question: firstPid ? (questionNumber.get(firstPid) || number) : number,
-      parts: firstPid ? (questionParts.get(firstPid) || 1) : 1,
-      length: Math.max(40, text.replace(/\s+/g, " ").length),
-      read: /\blea\b/i.test(text),
-      image: /\bim[aá]gen/i.test(text) || /\bim[aá]gen/i.test(questionText),
-      box: /\brecuadro\b/i.test(text) || /\brecuadro\b/i.test(questionText),
-    });
-  }
-  paragraphs.sort((a, b) => a.number - b.number);
-  const contiguous = paragraphs.every((paragraph, index) => paragraph.number === index + 1);
-  if (!title || paragraphs.length < 5 || !contiguous) throw new Error("No se pudo interpretar el artículo semanal");
-  return { title, week, sourceUrl, paragraphs };
+  const weeks = published.map((card) => "  - " + card.week + " -> " + card.url).join("\n");
+  throw new Error("ninguna edición de estudio cubre la semana de hoy (" + today.toISOString().slice(0, 10) + ").\nSemanas publicadas:\n" + (weeks || "  (ninguna)"));
 }
 
 async function main() {
-  const today = new Date();
-  const index = await fetchText(magazineIndex);
-  const issues = issueUrls(index);
-  const issuePages = await Promise.all(issues.map(async (url) => ({ url, html: await fetchText(url) })));
-  const match = issuePages.map(({ html }) => articleLinkForWeek(html, today)).find(Boolean);
-  if (!match) throw new Error("No se encontró una Atalaya para esta semana");
-  const article = articleFromHtml(await fetchText(match.url), match.url, match.week);
+  const card = await findWeeklyCard(new Date());
+  const article = articleFromHtml(await fetchText(card.url), card.url, card.week);
   await writeFile(join(root, "article.json"), JSON.stringify(article, null, 2) + "\n", "utf8");
-  console.log(`article.json actualizado: "${article.title}" (${article.paragraphs.length} párrafos, ${article.week})`);
+  console.log("article.json actualizado: \"" + article.title + "\" (" + article.paragraphs.length + " párrafos, " + article.week + ")");
 }
 
 main().catch((error) => {
-  console.error("No se pudo actualizar article.json:", error.message, "— se conserva la copia existente.");
-  process.exit(0);
+  console.error("No se pudo actualizar article.json: " + error.message);
+  console.error("Se conserva article.json y no se despliega: el sitio mantiene el último artículo publicado.");
+  process.exit(1);
 });
