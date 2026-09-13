@@ -361,6 +361,7 @@ h2 { font: 600 19px/1.18 var(--display); letter-spacing: -0.02em; text-wrap: bal
 }
 .paragraph-chip.has-event { outline: 2px solid rgba(236, 197, 119, 0.85); outline-offset: 1px; }
 .chip-icon { margin-left: 4px; font-size: 9px; font-style: normal; }
+.chip-time { margin-left: 4px; font-size: 9px; font-weight: 500; font-style: normal; letter-spacing: -0.02em; opacity: 0.72; }
 
 /* ---------- Notes ---------- */
 .notes-card textarea {
