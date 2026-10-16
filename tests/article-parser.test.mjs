@@ -105,6 +105,22 @@ test("articleFromHtml asocia la indicación de lectura separada al párrafo ante
   assert.deepEqual(article.paragraphs.map((paragraph) => paragraph.read), [true, false, true, false, false]);
 });
 
+test("articleFromHtml reconoce lee y léelo en las referencias bíblicas de esta semana", () => {
+  const numbered = (n, text) => `<p><span class="parNum" data-pnum="${n}">${n}</span>${text}</p>`;
+  const paragraphs = [
+    numbered(1, "Estamos en guerra con Satanás (lee <b>Efesios 6:11, 12</b>)."),
+    numbered(2, "Párrafo sin lectura."), numbered(3, "Párrafo sin lectura."), numbered(4, "Párrafo sin lectura."),
+    numbered(5, "La respuesta está en <b>Santiago 3:14-16</b> (léelo)."),
+    numbered(6, "Párrafo sin lectura."),
+    numbered(7, "Resolvamos el problema (lee <b>Efesios 4:25-27</b>)."),
+    ...[8, 9, 10, 11].map((n) => numbered(n, "Párrafo sin lectura.")),
+    numbered(12, "Jesús nos mandó amar (lee <b>Mateo 5:43, 44</b>)."),
+  ].join("");
+  const html = `<html><body><h1>Podemos lograr la victoria</h1><main><div class="bodyTxt">${paragraphs}</div></main></body></html>`;
+  const article = articleFromHtml(html, "https://example.test/articulo", "12-18 DE OCTUBRE DE 2026");
+  assert.deepEqual(article.paragraphs.filter((paragraph) => paragraph.read).map((paragraph) => paragraph.number), [1, 5, 7, 12]);
+});
+
 test("articleFromHtml falla en vez de publicar un artículo mal leído", () => {
   const broken = studyPage([
     { rel: 0, question: "1. ¿Qué aprendemos?", text: "Primero." },

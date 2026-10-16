@@ -11,6 +11,13 @@ export function plain(value = "") {
     .replace(/&quot;/gi, '"').replace(/&#(?:x0*([\da-f]+)|0*(\d+));/gi, (_, hex, dec) => String.fromCodePoint(parseInt(hex || dec, hex ? 16 : 10)))
     .replace(/\s+/g, " ").trim();
 }
+function hasReadingCue(text) {
+  // JW.org usa tanto el imperativo delante de la cita ("lee Efesios...")
+  // como el pronombre al final ("Santiago... (léelo)").
+  return /\b(?:lee|lean|lea)\s+(?=(?:[1-3]\s*)?[A-ZÁÉÍÓÚÑ])/i.test(text)
+    || /\bléel(?:o|a|os|as)\b/i.test(text)
+    || /\bléase\b/i.test(text);
+}
 export function absolute(url) { return new URL(url, jwBase).href; }
 export async function fetchText(url) {
   const response = await fetch(url, { headers: { "user-agent": "WatchtowerTimer/1.0 (personal timing tool)" } });
@@ -101,7 +108,7 @@ export function articleFromHtml(html, sourceUrl, week) {
       // jw.org may render the Bible reading cue as its own paragraph after the
       // numbered study paragraph, rather than inside that paragraph's markup.
       const cue = plain(block[1]);
-      if (paragraphs.length && /\blea(?:n)?\b/i.test(cue)) paragraphs.at(-1).read = true;
+      if (paragraphs.length && hasReadingCue(cue)) paragraphs.at(-1).read = true;
       continue;
     }
     const number = +pnum[1];
@@ -115,7 +122,7 @@ export function articleFromHtml(html, sourceUrl, week) {
       question: firstPid ? (questionNumber.get(firstPid) || number) : number,
       parts: firstPid ? (questionParts.get(firstPid) || 1) : 1,
       length: Math.max(40, text.replace(/\s+/g, " ").length),
-      read: /\blea(?:n)?\b/i.test(text),
+      read: hasReadingCue(text),
       image: /\bim[aá]gen/i.test(text) || /\bim[aá]gen/i.test(questionText),
       box: /\brecuadro\b/i.test(text) || /\brecuadro\b/i.test(questionText),
     });
