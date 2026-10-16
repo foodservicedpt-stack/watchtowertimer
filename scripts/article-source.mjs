@@ -96,8 +96,14 @@ export function articleFromHtml(html, sourceUrl, week) {
   }
   const paragraphs = [];
   for (const block of body.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/g)) {
-    const pnum = block[1].match(/data-pnum="(\d+)"/);
-    if (!pnum) continue;
+    const pnum = block[0].match(/data-pnum="(\d+)"/);
+    if (!pnum) {
+      // jw.org may render the Bible reading cue as its own paragraph after the
+      // numbered study paragraph, rather than inside that paragraph's markup.
+      const cue = plain(block[1]);
+      if (paragraphs.length && /\blea(?:n)?\b/i.test(cue)) paragraphs.at(-1).read = true;
+      continue;
+    }
     const number = +pnum[1];
     const text = plain(block[1].replace(/<span class="parNum[^"]*"[^>]*>[\s\S]*?<\/span>/g, ""));
     const rel = block[0].match(/data-rel-pid="\[([\d,\s]+)\]"/);
@@ -109,7 +115,7 @@ export function articleFromHtml(html, sourceUrl, week) {
       question: firstPid ? (questionNumber.get(firstPid) || number) : number,
       parts: firstPid ? (questionParts.get(firstPid) || 1) : 1,
       length: Math.max(40, text.replace(/\s+/g, " ").length),
-      read: /\blea\b/i.test(text),
+      read: /\blea(?:n)?\b/i.test(text),
       image: /\bim[aá]gen/i.test(text) || /\bim[aá]gen/i.test(questionText),
       box: /\brecuadro\b/i.test(text) || /\brecuadro\b/i.test(questionText),
     });

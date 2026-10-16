@@ -94,6 +94,17 @@ test("articleFromHtml extrae párrafos, pregunta compartida y apartados a) b)", 
   assert.equal(article.paragraphs[1].parts, 2);
 });
 
+test("articleFromHtml asocia la indicación de lectura separada al párrafo anterior", () => {
+  const html = `<html><body><h1>Artículo de prueba</h1><main><div class="bodyTxt">
+    <p><span data-pnum="1">1</span>Primer párrafo.</p><p class="sb">Lea Josué 9:1-3.</p>
+    <p><span data-pnum="2">2</span>Segundo párrafo sin lectura.</p>
+    <p><span data-pnum="3">3</span>Tercer párrafo.</p><p class="sb">Lean Romanos 1:1.</p>
+    <p><span data-pnum="4">4</span>Cuarto párrafo.</p><p><span data-pnum="5">5</span>Quinto párrafo.</p>
+  </div></main></body></html>`;
+  const article = articleFromHtml(html, "https://example.test/articulo", "7-13 DE SEPTIEMBRE DE 2026");
+  assert.deepEqual(article.paragraphs.map((paragraph) => paragraph.read), [true, false, true, false, false]);
+});
+
 test("articleFromHtml falla en vez de publicar un artículo mal leído", () => {
   const broken = studyPage([
     { rel: 0, question: "1. ¿Qué aprendemos?", text: "Primero." },
